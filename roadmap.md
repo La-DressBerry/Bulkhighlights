@@ -1,5 +1,7 @@
 # Roadmap
 
+- [x] Themes & Insights: inline Theme rename, AI Theme interpretation from Highlight notes, Researcher vs AI-generated provenance (badges, counts, filter), move/delete one or more Highlights with Undo, and a per-Theme "Review with AI" chat to confirm the lens, validate/reject/reassign quotes and collect feedback for the next AI pass. Verified in browser with AI offline (fallback draft); live AI replies need LOVABLE_API_KEY.
+
 - [x] Keep AI review conditional and compact; verified adjacent clip layout and curation safety in browser (actual video decoding remains unverified).
 
 - [x] Simplify AI review into compact directly editable cards with conditional human-evidence calibration; verified both paths, Theme persistence and batch safety in browser.

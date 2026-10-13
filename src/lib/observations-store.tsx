@@ -71,6 +71,32 @@ export function analysisProgress(obs: Observation[]) {
   };
 }
 
+/** AI reading of a Theme ("lens"), generated from its Highlights' notes. */
+export type ThemeLens = {
+  interpretation: string;
+  /** Signature of the Highlights the interpretation was generated from. */
+  sig: string;
+  /** Highlight ids the AI considers most coherent with the Theme. */
+  coherentIds: number[];
+  /** "ai" = generated, "offline" = local draft without AI, "researcher" = written or confirmed by the researcher. */
+  origin: "ai" | "offline" | "researcher";
+  confirmed?: boolean;
+};
+
+/** Researcher feedback collected in the Theme chat; it guides the next AI pass on the corpus. */
+export type ThemeFeedback = {
+  id: number;
+  theme: string;
+  kind: "confirm-interpretation" | "edit-interpretation" | "confirm-quote" | "reject-quote" | "reassign-quote" | "note";
+  highlightId?: number | undefined;
+  quote?: string | undefined;
+  to?: string | undefined;
+  reason?: string | undefined;
+  at: number;
+};
+
+export type ChatMessage = { role: "user" | "assistant"; text: string; proposal?: string | undefined };
+
 export type Insight = {
   id: number;
   title: string;
@@ -104,6 +130,19 @@ type Ctx = {
   addTheme: (name: string) => string;
   /** Renames a Theme everywhere; merges into an existing label when it already exists. Returns the final label. */
   renameTheme: (from: string, to: string) => string;
+  themeLens: Record<string, ThemeLens>;
+  setThemeLens: Dispatch<SetStateAction<Record<string, ThemeLens>>>;
+  themeFeedback: ThemeFeedback[];
+  addFeedback: (f: Omit<ThemeFeedback, "id" | "at">) => void;
+  themeChats: Record<string, ChatMessage[]>;
+  setThemeChats: Dispatch<SetStateAction<Record<string, ChatMessage[]>>>;
+};
+
+let feedbackSeq = 1;
+const moveKey = <T,>(rec: Record<string, T>, from: string, to: string) => {
+  if (!(from in rec) || from === to) return rec;
+  const { [from]: v, ...rest } = rec;
+  return to in rest ? rest : { ...rest, [to]: v as T };
 };
 
 export const themeKey = (t: string) => t.trim().toLowerCase();
@@ -124,6 +163,11 @@ export function ObservationsProvider({ children }: { children: ReactNode }) {
   const [bulkFlowKind, setBulkFlowKind] = useState<"themes" | "unthemed">("themes");
   const [aiSeedUsed, setAiSeedUsed] = useState<number[]>([]);
   const [registry, setRegistry] = useState<string[]>([]);
+  const [themeLens, setThemeLens] = useState<Record<string, ThemeLens>>({});
+  const [themeFeedback, setThemeFeedback] = useState<ThemeFeedback[]>([]);
+  const [themeChats, setThemeChats] = useState<Record<string, ChatMessage[]>>({});
+  const addFeedback = (f: Omit<ThemeFeedback, "id" | "at">) =>
+    setThemeFeedback((prev) => [...prev, { ...f, id: feedbackSeq++, at: Date.now() }]);
   const workspaceThemes = useMemo(() => {
     const out: string[] = [];
     [...registry, ...observations.flatMap((o) => o.themes)].forEach((t) => { if (!findTheme(out, t)) out.push(t); });
@@ -148,6 +192,13 @@ export function ObservationsProvider({ children }: { children: ReactNode }) {
     setObservations((prev) => prev.map((o) => o.themes.includes(from)
       ? { ...o, themes: [...new Set(o.themes.map((t) => (t === from ? final : t)))] }
       : o));
+    setThemeLens((l) => moveKey(l, from, final));
+    setThemeChats((c) => moveKey(c, from, final));
+    setThemeFeedback((fb) => fb.map((f) => ({
+      ...f,
+      theme: f.theme === from ? final : f.theme,
+      to: f.to === from ? final : f.to,
+    })));
     return final;
   };
   const value = useMemo(
@@ -167,11 +218,15 @@ export function ObservationsProvider({ children }: { children: ReactNode }) {
         setBulkFlowOpen(false);
         setAiSeedUsed([]);
         setRegistry([]);
+        setThemeLens({});
+        setThemeFeedback([]);
+        setThemeChats({});
       },
       workspaceThemes, addTheme, renameTheme,
+      themeLens, setThemeLens, themeFeedback, addFeedback, themeChats, setThemeChats,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [workspaceThemes, observations, insights, aiCoverage, bulkAlertDismissed, bulkFlowOpen, bulkFlowKind, aiSeedUsed],
+    [workspaceThemes, observations, insights, aiCoverage, bulkAlertDismissed, bulkFlowOpen, bulkFlowKind, aiSeedUsed, themeLens, themeFeedback, themeChats],
   );
   return (
     <ObservationsContext.Provider value={value}>{children}</ObservationsContext.Provider>
