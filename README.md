@@ -18,8 +18,14 @@ Prefer working locally? You need Node.js and npm — [install with nvm](https://
 git clone <this-repository-url>
 cd <repository-name>
 npm i
+cp .env.example .env.local   # then paste your Anthropic API key into .env.local
 npm run dev
 ```
+
+Open the local URL Vite prints. AI features (session summary, Highlight notes,
+Theme interpretation and the Theme review chat) call Claude through the Anthropic API using
+`ANTHROPIC_API_KEY` from `.env.local`, which is git-ignored. Without a key the app still runs and the
+Themes page falls back to offline drafts.
 
 ## Built with
 

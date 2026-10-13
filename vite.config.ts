@@ -6,6 +6,13 @@
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
+// Local secrets (e.g. ANTHROPIC_API_KEY) live in the git-ignored .env.local; existing env vars win.
+try {
+  process.loadEnvFile(".env.local");
+} catch {
+  /* no .env.local: rely on the shell environment */
+}
+
 export default defineConfig({
   tanstackStart: {
     // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).

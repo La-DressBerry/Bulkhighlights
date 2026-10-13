@@ -17,3 +17,4 @@ Use the shared BulkAiEntry page action for initial AI discovery on both dashboar
 - AI review uses compact inline-editable cards and scoped tokens, with Theme management inside cards only; keep temporary calibration separate from workspace acceptance.
 - Render the single active clip within its evidence item, side-by-side on desktop and adjacent below on narrow screens; this preserves source context without a detached preview.
 - The deterministic AI review guardrail counts reliable human evidence per Theme (never AI evidence); tweak AI_REVIEW_RULE rather than adding mandatory review steps.
+- AI calls go through src/lib/claude.server.ts (Anthropic SDK, ANTHROPIC_API_KEY from git-ignored .env.local); never commit keys.

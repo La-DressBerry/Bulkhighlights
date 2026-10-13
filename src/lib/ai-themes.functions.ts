@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { askClaude, parseJsonReply } from "@/lib/claude.server";
 
 const Highlight = z.object({
   id: z.number(),
@@ -11,57 +12,7 @@ const Highlight = z.object({
 const Feedback = z.array(z.string().max(1000)).max(60);
 
 async function callGateway(instructions: string, input: string) {
-  const key = process.env["LOVABLE_API_KEY"];
-  if (!key) throw new Error("AI non configurata");
-  const res = await fetch("https://ai.gateway.lovable.dev/v1/responses", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Lovable-API-Key": key,
-      "X-Lovable-AIG-SDK": "fetch",
-    },
-    body: JSON.stringify({
-      model: "openai/gpt-6-astra",
-      stream: true,
-      store: false,
-      reasoning: { effort: "low" },
-      instructions,
-      input,
-    }),
-  });
-  if (!res.ok || !res.body) {
-    const s = res.status;
-    throw new Error(
-      s === 429
-        ? "Troppe richieste, riprova tra poco."
-        : s === 402
-          ? "Crediti AI esauriti."
-          : `Errore AI (${s})`,
-    );
-  }
-  const reader = res.body.getReader();
-  const dec = new TextDecoder();
-  let buf = "";
-  let out = "";
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buf += dec.decode(value, { stream: true });
-    const lines = buf.split("\n");
-    buf = lines.pop() ?? "";
-    for (const line of lines) {
-      if (!line.startsWith("data:")) continue;
-      const p = line.slice(5).trim();
-      if (!p || p === "[DONE]") continue;
-      try {
-        const ev = JSON.parse(p);
-        if (ev.type === "response.output_text.delta") out += ev.delta ?? "";
-      } catch {
-        /* ignore */
-      }
-    }
-  }
-  return JSON.parse(out.slice(out.indexOf("{"), out.lastIndexOf("}") + 1)) as unknown;
+  return parseJsonReply(await askClaude({ system: instructions, input }));
 }
 
 const describe = (hs: z.infer<typeof Highlight>[]) =>
